@@ -13,6 +13,6 @@ using namespace caffe;
 //	std::vector<float> feature;
 //	string path;
 //};
-vector<float> Extract(Net &net, const Mat& img,FaceInfo& face);
+void Extract(Net &net, const Mat& img,FaceInfo& face);
 
 #endif

@@ -161,7 +161,6 @@ cv::Matx23d AlignShapeWithScale(cv::Mat_<double>& src, cv::Mat_<double>& dst)
 
 	return warp_matrix;
 }
-
 float PointToLineDis(Point2f cur, Point2f start, Point2f end){
 	double a, b, c, dis;
 	a = end.y - start.y;
@@ -200,7 +199,6 @@ bool PtInAnyRect1(Point2f pCur, Rect search)
 	}
 	return (nCross % 2 == 1);
 }
-
 bool PtInAnyRect2(Point2f pCur, Point2f pLT, Point2f pRT, Point2f pRB, Point2f pLB)
 {
 	/*Point2f pLT, pRT, pLB, pRB;
@@ -232,9 +230,6 @@ bool PtInAnyRect2(Point2f pCur, Point2f pLT, Point2f pRT, Point2f pRB, Point2f p
 	}
 	return (nCross % 2 == 1);
 }
-
-
-
 float CalculateVectorAngle(float x1, float y1, float x2, float y2, float x3, float y3)
 {
 	float x_1 = x2 - x1;
@@ -326,7 +321,7 @@ void class_Json(vector<vector<Student_Info>>&students_all, vector<int>&student_v
 	//}
 	
 }
-void student_Json(vector<vector<Student_Info>>&students_all, vector<int>&student_valid, int &i, int &j, string &start_time, int &start_frame, int &end_frame, int &activity_order, string &end_time, int &negtive_num, Point &ss, Json::Value &behavior_infomation, Json::Value &all_rect, string &dongzuo){
+void student_Json(vector<vector<Student_Info>>&students_all, vector<int>&student_valid, int &i, int &j, string &start_time, int &start_frame, int &end_frame, int &activity_order, string &end_time, int &negtive_num, Point &ss, Json::Value &behavior_infomation, Json::Value &all_rect, Json::Value &face_diff, string &dongzuo){
 
 	char buff[200];
 	//sprintf(buff, "%d/%d/%d-%02d:%02d:%02d", students_all[student_valid[i]][j].pstSystemTime.dwYear, students_all[student_valid[i]][j].pstSystemTime.dwMon, students_all[student_valid[i]][j].pstSystemTime.dwDay, students_all[student_valid[i]][j].pstSystemTime.dwHour, students_all[student_valid[i]][j].pstSystemTime.dwMin, students_all[student_valid[i]][j].pstSystemTime.dwSec);
@@ -371,6 +366,9 @@ void student_Json(vector<vector<Student_Info>>&students_all, vector<int>&student
 	//behavior_infomation[dongzuo][a - 1] = append_string;
 
 	//----------------------------------------------------
+	if (students_all[student_valid[i]][0].matching_at_end != 100){
+		face_diff[dongzuo][a - 2] = /*miss_f != " " ? append_frame + "," + miss_f : */append_frame;
+	}
 	all_rect[dongzuo][a - 2] = /*miss_f != " " ? append_frame + "," + miss_f : */append_frame;
 	Json::Value student_loc;
 	int count = 0;
@@ -398,7 +396,9 @@ void student_Json(vector<vector<Student_Info>>&students_all, vector<int>&student
 		student_loc.append(student_rect);
 	}
 	all_rect[dongzuo][a - 1] = Json::Value(student_loc);
-
+	if (students_all[student_valid[i]][0].matching_at_end != 100){
+		face_diff[dongzuo][a - 1] = Json::Value(student_loc);
+	}
 }
 
 
@@ -491,6 +491,7 @@ void writeJson(vector<int>&student_valid, vector<vector<Student_Info>>&students_
 	
 	Json::Value root2;
 	Json::Value root3;
+	Json::Value root4;
 	for (int i = 0; i < student_valid.size(); i++){
 		
 		for (int j = 0; j < 7; j++){
@@ -506,11 +507,15 @@ void writeJson(vector<int>&student_valid, vector<vector<Student_Info>>&students_
 		}
 		
 		Json::Value behavior_infomation;
-		behavior_infomation["max_energy"] = students_all[student_valid[i]][0].cur_frame1;
-		behavior_infomation["ID"] = student_valid[i];
-
 		Json::Value all_rect;
+
+		behavior_infomation["max_energy"] = students_all[student_valid[i]][0].cur_frame1;
+		behavior_infomation["ID"] = student_valid[i];	
 		all_rect["ID"] = student_valid[i];
+
+		Json::Value face_diff;
+		face_diff["ID"] = students_all[student_valid[i]][0].matching_at_end;
+
 	
 		for (int j = 1; j < students_all[student_valid[i]].size(); j++){
 			
@@ -529,7 +534,7 @@ void writeJson(vector<int>&student_valid, vector<vector<Student_Info>>&students_
 					if (negtive_num == j-1)negtive_num = 3;
 				}
 				string dongzuo = "bow_head";
-				student_Json(students_all, student_valid, i, j, start_time[3], start_frame[3], end_frame[3], activity_order[3], end_time[3], negtive_num, ss[0], behavior_infomation, all_rect,dongzuo);
+				student_Json(students_all, student_valid, i, j, start_time[3], start_frame[3], end_frame[3], activity_order[3], end_time[3], negtive_num, ss[0], behavior_infomation, all_rect, face_diff,dongzuo);
 			}
 		
 			if (students_all[student_valid[i]][j].daze == true){
@@ -548,7 +553,7 @@ void writeJson(vector<int>&student_valid, vector<vector<Student_Info>>&students_
 				}
 
 				string dongzuo = "daze";
-				student_Json(students_all, student_valid, i, j, start_time[4], start_frame[4], end_frame[4], activity_order[4], end_time[4], negtive_num, ss[1], behavior_infomation, all_rect, dongzuo);
+				student_Json(students_all, student_valid, i, j, start_time[4], start_frame[4], end_frame[4], activity_order[4], end_time[4], negtive_num, ss[1], behavior_infomation, all_rect, face_diff,dongzuo);
 			}
 		
 			if (students_all[student_valid[i]][j].raising_hand == true && students_all[student_valid[i]][j].real_raise==true){
@@ -572,7 +577,7 @@ void writeJson(vector<int>&student_valid, vector<vector<Student_Info>>&students_
 					if (negtive_num == j-1)negtive_num = 3;
 				}
 				string dongzuo = "raising_hand";
-				student_Json(students_all, student_valid, i, j, start_time[5], start_frame[5], end_frame[5], activity_order[5], end_time[5], negtive_num, ss[2], behavior_infomation, all_rect, dongzuo);
+				student_Json(students_all, student_valid, i, j, start_time[5], start_frame[5], end_frame[5], activity_order[5], end_time[5], negtive_num, ss[2], behavior_infomation, all_rect, face_diff,dongzuo);
 			}
 		
 			if (students_all[student_valid[i]][j].standing == true){
@@ -589,12 +594,13 @@ void writeJson(vector<int>&student_valid, vector<vector<Student_Info>>&students_
 					if (negtive_num == j-1)negtive_num = 3;
 				}
 				string dongzuo = "standing";
-				student_Json(students_all, student_valid, i, j, start_time[6], start_frame[6], end_frame[6], activity_order[6], end_time[6], negtive_num, ss[3], behavior_infomation, all_rect, dongzuo);
+				student_Json(students_all, student_valid, i, j, start_time[6], start_frame[6], end_frame[6], activity_order[6], end_time[6], negtive_num, ss[3], behavior_infomation, all_rect, face_diff, dongzuo);
 			}
 		}
 
 		root2["student"].append(behavior_infomation);
 		root3["student"].append(all_rect);
+		root4["student"].append(face_diff);
 	}
 
 	ofstream out;
@@ -610,6 +616,13 @@ void writeJson(vector<int>&student_valid, vector<vector<Student_Info>>&students_
 	Json::StyledWriter sw2;
 	out2 << sw2.write(root3);
 	out2.close();
+
+	ofstream out3;
+	string jsonfile3 = output.substr(0, pos1) + "/" + videoname + "-face" + ".json";
+	out3.open(jsonfile3);
+	Json::StyledWriter sw3;
+	out3 << sw3.write(root4);
+	out3.close();
 }
 void drawGrid(Mat &image, vector<int>student_valid,vector<vector<Student_Info>>students_all){
 	vector<vector<int>>orderr = { { 14, 3, 21, 19, 5, 17 }, { 15, 20, 2, 9, 12, 22, 24 }, { 7, 0, 1, 26, 50, 48 }, { 27, 4, 6, 32, 29, 49, 13 }, { 23, 41, 8, 34, 39, 35, 31 }, { 38, 43, 28, 10, 16, 42, 51 }, { 18, 37, 33, 30, 44, 40 }, {47,45,25,11,46,36} };

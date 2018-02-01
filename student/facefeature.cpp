@@ -125,7 +125,7 @@ static Mat GetRefinedFace(const cv::Mat& img, const FaceInfo& face, cv::Size kCr
 //	return patch;
 //}
 
-vector<float> Extract(Net &net, const Mat& img, FaceInfo& face){
+void Extract(Net &net, const Mat& img, FaceInfo& face){
 	// We need color image
 	CV_Assert(img.type() == CV_8UC3);
 	// align img
@@ -155,16 +155,15 @@ vector<float> Extract(Net &net, const Mat& img, FaceInfo& face){
 	net.Forward();
 	shared_ptr<Blob> feature = net.blob_by_name("fc5");
 
-	vector<float>features;
+	//vector<float>features;
 	const int kFeatureSize = feature->channels();
-	features.resize(2 * kFeatureSize);
+	face.feature.resize(2 * kFeatureSize);
 	for (int i = 0; i < kFeatureSize; i++) {
-		features[i] = feature->data_at(0, i, 0, 0);
+		face.feature[i] = feature->data_at(0, i, 0, 0);
 	}
 	for (int i = 0; i < kFeatureSize; i++) {
-		features[kFeatureSize + i] = feature->data_at(1, i, 0, 0);
+		face.feature[kFeatureSize + i] = feature->data_at(1, i, 0, 0);
 	}
-	return features;
 }
 
 //void Extract(Net &net, const Mat& img, FaceInfo& face) {

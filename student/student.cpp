@@ -35,14 +35,19 @@ int GetStandaredFeats(Net &net1, PoseInfo &pose, Mat &frame_1080, int &n,int &n1
 			float score = float(pose.subset[i][18]) / pose.subset[i][19];			
 			if (pose.subset[i][19] >= 4 && score >= 0.4){
 				stu_real++;
-				if (pose.subset[i][1] == -1){
+				/*if (pose.subset[i][1] == -1){
 					for (int j = 0; j < 18; j++){
 						if (pose.subset[i][j] != -1)cv::circle(frame, Point2f(pose.candicate[pose.subset[i][j]][0], pose.candicate[pose.subset[i][j]][1]), 5, cv::Scalar(0,255,255), -1);
 					}
-				}
+				}*/
 				if (pose.subset[i][1] != -1){
 					score_sum += pose.subset[i][18];
 					stu_n++;
+					if (pose.subset[i][2] != -1 && pose.subset[i][5] != -1){
+						if (pose.candicate[pose.subset[i][2]][0] > pose.candicate[pose.subset[i][5]][0]){
+							stu_n--;
+						}
+					}
 				}
 			}
 		}
@@ -112,7 +117,7 @@ int GetStandaredFeats(Net &net1, PoseInfo &pose, Mat &frame_1080, int &n,int &n1
 							//	cv::putText(frame, to_string(xuhao), student_ori.loc, FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 255, 255), 2);
 							//}
 							//else{
-							cv::putText(frame, to_string(i), student_ori.loc, FONT_HERSHEY_SIMPLEX, 0.7, Scalar(0, 0, 255), 2);
+							cv::putText(frame, to_string(i), student_ori.loc, FONT_HERSHEY_COMPLEX, 0.7, Scalar(0, 0, 255), 2);
 							//}
 							//xuhao++;
 							cv::imwrite(b, frame);
@@ -121,95 +126,161 @@ int GetStandaredFeats(Net &net1, PoseInfo &pose, Mat &frame_1080, int &n,int &n1
 				}
 			//}
 		}
+		else{ cout << "student_num: " << stu_n << endl; }
 		return n1;
 	}
 }
 
-int GetStandaredFeats1(Net &net1, Net &net4, jfda::JfdaDetector &detector ,vector<FaceInfo>&standard_faces, PoseInfo &pose, Mat &frame_1080, int &n, int &n1, string &output, int &max_student_num){
-	if (n%standard_frame == 0){
+int GetStandaredFeats1(Net &net1, Net &net3, Net &net4, jfda::JfdaDetector &detector, vector<FaceInfo>&standard_faces, PoseInfo &pose, Mat &frame_1080, int &n, int &n2, string &output, vector<vector<Student_Info>>&students_all, vector<int>&student_valid, int &max_student_num){
+if (n%standard_frame == 0){
 		Timer timer;
 		Mat frame;
 		cv::resize(frame_1080, frame, Size(0, 0), 2 / 3., 2 / 3.);
-		pose_detect(net1, frame, pose);
-		int stu_n = 0;
+		//pose_detect(net1, frame, pose);
+		int front_stu_n = 0;
 		int stu_real = 0;
 		float score_sum = 0;
-		for (int i = 0; i < pose.subset.size(); i++){
-			float score = float(pose.subset[i][18]) / pose.subset[i][19];
-			if (pose.subset[i][19] >= 4 && score >= 0.4){
-				stu_real++;
-	
-				if (pose.subset[i][1] != -1 && pose.subset[i][0] != -1){
-					stu_n++;
+		int stu_n = 0;
+		
+		vector<FaceInfoInternal>facem;
+		//timer.Tic();
+		vector<FaceInfo> faces = detector.Detect(frame_1080, facem);
+		/*timer.Toc();
+		cout << "face cost time: " << timer.Elasped() / 1000.0 << " s" << endl;*/
+		
+		if (faces.size() != 0){
+			for (int i = 0; i < faces.size(); i++){
+				//cv::rectangle(frame_1080, faces[i].bbox, Scalar(0, 255, 0), 2, 8, 0);
+				//---------------------正脸人数----------------------------------
+				std::tuple<bool, float>front_face_or_not = is_front_face(net3, frame_1080, faces[i].bbox);
+				bool front_face = get<0>(front_face_or_not);
+				string sco = to_string(get<1>(front_face_or_not));
+				if (front_face == true){
+					front_stu_n++;
+					/*putText(frame_1080, sco, Point(faces[i].bbox.x, faces[i].bbox.y), FONT_HERSHEY_COMPLEX, 0.5, Scalar(0, 255, 255));
+					cv::rectangle(frame_1080, faces[i].bbox, Scalar(0, 255, 0), 2, 8, 0);*/
 				}
+				/*else {
+					cv::rectangle(frame_1080, faces[i].bbox, Scalar(255, 0, 0), 2, 8, 0);
+					putText(frame_1080, sco, Point(faces[i].bbox.x, faces[i].bbox.y), FONT_HERSHEY_COMPLEX, 0.5, Scalar(0, 255, 255));
+				}*/
 			}
+			/*if (front_stu_n >= max_student_num - 2 && faces.size() >= max_student_num){
+				string output3 = "/home/lw/student_api_no_Hik/output_face/" + to_string(n) + ".jpg";
+				cv::imwrite(output3, frame_1080);
+			}*/
 		}
-		if (stu_n >= max_student_num){
-			//max_student_num = stu_n;
-			cout << stu_n << " / " << stu_real << endl;
-			n1++;
-			
-			for (int i = 0; i < pose.subset.size(); i++){
-				float score = float(pose.subset[i][18]) / pose.subset[i][19];
-				if (pose.subset[i][19] >= 4 && score >= 0.4){
-					if (pose.subset[i][1] != -1 && pose.subset[i][0] != -1){
-						float wid1 = 0, wid2 = 0, wid = 0;
-						if (pose.subset[i][2] != -1 && pose.subset[i][5] != -1){
-							wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][2]][0]);
-							wid2 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][5]][0]);
-							wid = MAX(wid1, wid2);
-							if (wid == 0)continue;
-						}
-						if (pose.subset[i][2] != -1 && pose.subset[i][5] == -1){
-							wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][2]][0]);
-							wid2 = wid1;
-							wid = wid1;
-							if (wid == 0)continue;
-						}
-						if (pose.subset[i][2] == -1 && pose.subset[i][5] != -1){
-							wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][5]][0]);
-							wid2 = wid1;
-							wid = wid1;
-							if (wid == 0)continue;
-						}
-
-						Rect face_box;
-						face_box.x = pose.candicate[pose.subset[i][0]][0] - 1.6*wid / 2;
-						face_box.y = pose.candicate[pose.subset[i][0]][1] - 1.8*wid *1.2 / 2;
-						face_box.width = wid*1.8;
-						face_box.height = wid*1.8;
-						refine(face_box, frame);
-						Rect face_bbox_1080(face_box.x * 3 / 2, face_box.y * 3 / 2, face_box.width * 3 / 2., face_box.height * 3 / 2);
-						Mat faceimg = frame_1080(face_bbox_1080);			
-						vector<FaceInfoInternal>facem;
-						vector<FaceInfo> faces = detector.Detect(faceimg, facem);
-						if (faces.size() != 0){
-							FaceInfo faceinfo = faces[0];
-							faceinfo.feature = Extract(net4, faceimg, faceinfo);
-							string output3 = "/home/lw/student_api_no_Hik/output_face/" + to_string(i);
-							faceinfo.path = output3;
-							standard_faces.push_back(faceinfo);
-
-							if (!fs::IsExists(output3)){
-								fs::MakeDir(output3);
-							}
-							string b = output3 + "/" + "standard.jpg";
-							//resize(faceimg, faceimg, Size(96, 112));
-							cv::imwrite(b, faceimg);
-						}
-					}
+		
+		if (front_stu_n >= max_student_num - 2 && faces.size() >= max_student_num){
+			for (int i = 0; i < faces.size(); i++){
+				FaceInfo faceinfo = faces[i];
+				//Rect face_bbox_1080(faceinfo.bbox.x * 3 / 2, faceinfo.bbox.y * 3 / 2, faceinfo.bbox.width * 3 / 2., faceinfo.bbox.height * 3 / 2);
+				Mat faceimg = frame_1080(faceinfo.bbox);
+				Extract(net4, frame_1080, faceinfo);
+				string output3 = "/home/lw/student_api_no_Hik/output_face/" + to_string(i);
+				if (!fs::IsExists(output3)){
+					fs::MakeDir(output3);
 				}
+				faceinfo.path = output3;
+				standard_faces.push_back(faceinfo);
+				string b = output3 + "/" + "0_standard.jpg";
+				cv::imwrite(b, faceimg);
+				putText(frame_1080, to_string(i), Point(faceinfo.bbox.x, faceinfo.bbox.y), FONT_HERSHEY_COMPLEX, 1, Scalar(0, 255, 0),2);
+				//putText(frame_1080, to_string(faceinfo.score), Point(faceinfo.bbox.x, faceinfo.bbox.y), FONT_HERSHEY_COMPLEX, 0.5, Scalar(0, 255, 255));
+				//rectangle(frame_1080, faceinfo.bbox, Scalar(0, 255, 0), 2);
 			}
-			//}
+			string output4 = "/home/lw/student_api_no_Hik/output_face/all.jpg";
+			cv::imwrite(output4, frame_1080);
+			n2 = max_student_num;
+			return n2;
 		}
-		return n1;
+		else{ cout << "front_stu_num / all_faces: " << front_stu_n << " / " << faces.size()<< endl; }
+		return 0;
+
+		//for (int i = 0; i < pose.subset.size(); i++){
+		//	float score = float(pose.subset[i][18]) / pose.subset[i][19];
+		//	if (pose.subset[i][19] >= 4 && score >= 0.4){
+		//		stu_real++;
+		//		if (pose.subset[i][1] != -1 && pose.subset[i][0] != -1){
+		//			stu_n++;
+		//		}
+		//	}
+		//}
+		//if (stu_n >= 0){
+		//	//max_student_num = stu_n;
+		//	cout << stu_n << " / " << stu_real << endl;
+		//	n2++;
+		//	
+		//	for (int i = 0; i < pose.subset.size(); i++){
+		//		float score = float(pose.subset[i][18]) / pose.subset[i][19];
+		//		if (pose.subset[i][19] >= 4 && score >= 0.4){
+		//			if (pose.subset[i][1] != -1 && pose.subset[i][0] != -1){
+		//				float wid1 = 0, wid2 = 0, wid = 0;
+		//				if (pose.subset[i][2] != -1 && pose.subset[i][5] != -1){
+		//					wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][2]][0]);
+		//					wid2 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][5]][0]);
+		//					wid = MAX(wid1, wid2);
+		//					if (wid == 0)continue;
+		//				}
+		//				if (pose.subset[i][2] != -1 && pose.subset[i][5] == -1){
+		//					wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][2]][0]);
+		//					wid2 = wid1;
+		//					wid = wid1;
+		//					if (wid == 0)continue;
+		//				}
+		//				if (pose.subset[i][2] == -1 && pose.subset[i][5] != -1){
+		//					wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][5]][0]);
+		//					wid2 = wid1;
+		//					wid = wid1;
+		//					if (wid == 0)continue;
+		//				}
+		//				Rect face_box;
+		//				face_box.x = pose.candicate[pose.subset[i][0]][0] - 2.5*wid / 2;
+		//				face_box.y = pose.candicate[pose.subset[i][0]][1] - 2.5*wid *1.2 / 2;
+		//				face_box.width = wid*3;
+		//				face_box.height = wid*3;
+		//				refine(face_box, frame);
+		//				Rect face_bbox_1080(face_box.x * 3 / 2, face_box.y * 3 / 2, face_box.width * 3 / 2., face_box.height * 3 / 2);
+		//				Mat faceimg = frame_1080(face_bbox_1080);			
+		//				vector<FaceInfoInternal>facem;
+		//				vector<FaceInfo> faces = detector.Detect(faceimg, facem);
+		//				if (faces.size() != 0){
+		//					FaceInfo faceinfo = faces[0];
+		//					faceinfo.feature = Extract(net4, faceimg, faceinfo);
+		//					////---------------------判断正脸----------------------------------
+		//					//std::tuple<bool, float>front_face_or_not = is_front_face(net3, faceimg, faces[0].bbox);
+		//					//bool front_face = get<0>(front_face_or_not);
+		//					//string sco = to_string(get<1>(front_face_or_not));
+		//					//if (front_face == true){
+		//					//	putText(frame, sco, Point(faces[0].bbox.x, faces[0].bbox.y), FONT_HERSHEY_COMPLEX, 0.5, Scalar(0, 255, 255));
+		//					//	cv::rectangle(frame, faces[0].bbox, Scalar(0, 255, 0), 2, 8, 0);
+		//					//}
+		//					//else {
+		//					//	cv::rectangle(frame, faces[0].bbox, Scalar(255, 0, 0), 2, 8, 0);
+		//					//	putText(frame, sco, Point(faces[0].bbox.x, faces[0].bbox.y), FONT_HERSHEY_COMPLEX, 0.5, Scalar(0, 255, 255));
+		//					//}
+		//					string output3 = "/home/lw/student_api_no_Hik/output_face/" + to_string(i);
+		//					faceinfo.path = output3;
+		//					standard_faces.push_back(faceinfo);
+		//					string output4 = "/home/lw/student_api_no_Hik/output1/552.jpg";
+		//					if (!fs::IsExists(output3)){
+		//						fs::MakeDir(output3);
+		//					}
+		//					string b = output3 + "/" + "standard.jpg";
+		//					//resize(faceimg, faceimg, Size(96, 112));
+		//					cv::imwrite(output4, frame);
+		//					cv::imwrite(b, faceimg);
+		//				}
+		//			}
+		//		}
+		//	}
+		//	//}
+		//}
+		//return n2;
 	}
 }
 
-
-
-
-std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(Net &net1, Net &net2, Net &net3, Net &net4, jfda::JfdaDetector &detector, Mat &image_1080, int &n, PoseInfo &pose, string &output, vector<vector<Student_Info>>&students_all, vector<int>&student_valid, vector<Class_Info> &class_info_all, vector<FaceInfo>&standard_faces){
+std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(Net &net1, Net &net2, Net &net3, Net &net4, jfda::JfdaDetector &detector, Mat &image_1080, int &n, PoseInfo &pose, string &output, vector<vector<Student_Info>>&students_all, vector<int>&student_valid, vector<Class_Info> &class_info_all, vector<FaceInfo>&standard_faces, int &max_student_num){
 	/*vector<Student_Info>student_detect(Net &net1, Mat &image, int &n, PoseInfo &pose,string &output)*/
 	Timer timer;
 	
@@ -217,7 +288,10 @@ std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(Net &
 		Mat image;
 		cv::resize(image_1080, image, Size(0, 0), 2 / 3., 2 / 3.);
 		timer.Tic();
+		//timer.Tic();
 		pose_detect(net1, image, pose);
+		//timer.Toc();
+		//cout << "pose detect cost " << timer.Elasped() / 1000.0 << " s" << endl;
 		/*timer.Toc();
 		cout << "pose detect cost " << timer.Elasped() / 1000.0 << " s" << endl;
 		timer.Tic();*/
@@ -231,7 +305,6 @@ std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(Net &
 		vector<Point2f>area2_ = { { 423, 347 }, { 769, 347 }, { 842,432 }, { 288, 432 } };
 		vector<Point2f>area3_ = { { 489, 308 }, { 730, 308 }, { 772, 347 }, { 427, 347 } };*/
 		
-
 		for (int i = 0; i < pose.subset.size(); i++){
 			Student_Info student_info;
 			student_info.cur_frame1 = n;
@@ -285,7 +358,7 @@ std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(Net &
 					area3++;
 				}*/
 
-				//--------------------------判断正视人头-----------------------------------
+				//--------------------------给人头框+判断正视人头-----------------------------------
 
 				if (pose.subset[i][1] != -1 && pose.subset[i][0] != -1){
 					float wid1 = 0, wid2 = 0, wid = 0;
@@ -309,10 +382,10 @@ std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(Net &
 					}
 
 					Rect face_box;
-					face_box.x = pose.candicate[pose.subset[i][0]][0] - 1.6*wid / 2;
-					face_box.y = pose.candicate[pose.subset[i][0]][1] - 1.8*wid *1.2 / 2;
-					face_box.width = wid*1.8;
-					face_box.height = wid*1.8;
+					face_box.x = pose.candicate[pose.subset[i][0]][0] - 2.1*wid / 2;
+					face_box.y = pose.candicate[pose.subset[i][0]][1] - 2.5 * wid *1.2 / 2;
+					face_box.width = wid*2.4;
+					face_box.height = wid*2.4;
 					refine(face_box, image);
 					student_info.face_bbox = face_box;
 
@@ -438,18 +511,50 @@ std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(Net &
 		cv::putText(image, to_string(area2), Point((area2_[0].x + area2_[1].x) / 2, (area2_[0].y + area2_[3].y) / 2), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255),2);
 		cv::putText(image, to_string(area3), Point((area3_[0].x + area3_[1].x) / 2, (area3_[0].y + area3_[3].y) / 2), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 255),2);
 */
-		//-------------------------人脸识别--------------------------------------------
-		face_recog(net4, detector, students_all, student_valid, n, image_1080, standard_faces);
+		//-------------------------人脸匹配--------------------------------------------
+		//timer.Tic();
+		int matching_num = 0;
+		//int good_face_num = 0;
+		for (int i = 0; i < student_valid.size(); i++){
+			if (students_all[student_valid[i]][0].matching_at_end < 100){
+				matching_num++;
+			}
+			/*if (!students_all[student_valid[i]][0].good_face_features.empty()){
+				good_face_num++;
+			}*/
+		}
+		//cout << "good face numble: " << good_face_num << endl;
+		
+		if (standard_faces.size() < max_student_num){
+			cout << "standard_faces.size(): " << standard_faces.size() << endl;
+			good_face(net3, net4, detector, students_all, student_valid, n, image_1080, standard_faces,max_student_num);
+		}
+		else{
+			cout << "standard_faces.size(): " << standard_faces.size() << endl;
+			cout << "good face done" << endl;
+		}
 
+		cout << "matching people numble: " << matching_num << endl;
+		if (matching_num < student_valid.size() && standard_faces.size()==max_student_num){
+			face_match(net4, detector, students_all, student_valid, n, image_1080, standard_faces);
+			//renew_face_match(net4, detector, students_all, student_valid, n, image_1080, standard_faces);
+		}
+
+		//timer.Toc();
+		//cout << "face match cost " << timer.Elasped() / 1000.0 << " s" << endl;
 
 		//----------------------分析行为----------------------------------
 
-		Analys_Behavior(students_all, student_valid, class_info_all, image_1080, n, num_turn_body);
+		Analys_Behavior(students_all, student_valid, class_info_all, image_1080,image, n, num_turn_body);
 		if (n % (10) == 0){
 			writeJson(student_valid, students_all, class_info_all, output, n);
 		}
 
-		
+		/*for (int i = 0; i < student_valid.size(); i++){
+			if (students_all[student_valid[i]][0].matching_at_end < 100){
+				rectangle(image, students_all[student_valid[i]][0].body_bbox, Scalar(0, 255, 0),2);
+			}
+		}*/
 
 
 		//drawGrid(image,student_valid,students_all);
