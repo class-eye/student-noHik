@@ -280,7 +280,7 @@ if (n%standard_frame == 0){
 	}
 }
 
-std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(Net &net1, Net &net2, Net &net3, Net &net4, jfda::JfdaDetector &detector, Mat &image_1080, int &n, PoseInfo &pose, string &output, vector<vector<Student_Info>>&students_all, vector<int>&student_valid, vector<Class_Info> &class_info_all, vector<FaceInfo>&standard_faces, int &max_student_num){
+std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(Net &net1, Net &net2, Net &net3, Net &net4, jfda::JfdaDetector &detector, Mat &image_1080, int &n, PoseInfo &pose, string &output, vector<vector<Student_Info>>&students_all, vector<vector<Student_Info>>&ID, vector<int>&student_valid, vector<Class_Info> &class_info_all, vector<FaceInfo>&standard_faces, int &max_student_num){
 	/*vector<Student_Info>student_detect(Net &net1, Mat &image, int &n, PoseInfo &pose,string &output)*/
 	Timer timer;
 	
@@ -536,26 +536,42 @@ std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(Net &
 
 		cout << "matching people numble: " << matching_num << endl;
 		if (matching_num < student_valid.size() && standard_faces.size()==max_student_num){
-			face_match(net4, detector, students_all, student_valid, n, image_1080, standard_faces);
-			//renew_face_match(net4, detector, students_all, student_valid, n, image_1080, standard_faces);
+			/*face_match(net4, detector, students_all, student_valid, n, image_1080, standard_faces);
+			renew_face_match(net4, detector, students_all, student_valid, n, image_1080, standard_faces);*/
 		}
+		face_match(net4, detector, students_all, student_valid, n, image_1080, standard_faces);
+		renew_face_match(net4, detector, students_all, student_valid, n, image_1080, standard_faces);
+
+		
 
 		//timer.Toc();
 		//cout << "face match cost " << timer.Elasped() / 1000.0 << " s" << endl;
 
 		//----------------------·ÖÎöÐÐÎª----------------------------------
-
-		Analys_Behavior(students_all, student_valid, class_info_all, image_1080,image, n, num_turn_body);
-		if (n % (10) == 0){
-			writeJson(student_valid, students_all, class_info_all, output, n);
+		Analys_Behavior(students_all, ID,student_valid, class_info_all, image_1080,image, n, num_turn_body);
+		
+		for (int i = 0; i < student_valid.size(); i++){
+			if (students_all[student_valid[i]][0].matching_at_end < 100){
+				cv::putText(image, to_string(students_all[student_valid[i]][0].matching_at_end), ID[students_all[student_valid[i]][0].matching_at_end].back().loc, FONT_HERSHEY_COMPLEX, 0.7, Scalar(0, 0, 255), 2);
+				cout << "student  " << student_valid[i] << "matching " << students_all[student_valid[i]][0].matching_at_end << endl;
+			}
 		}
+
+	
+		/*if (n % (10) == 0){
+			writeJson(student_valid, students_all, class_info_all, output, n);
+		}*/
+		if (n % (10) == 0){
+			writeJson1(student_valid, students_all,ID, class_info_all, output, n);
+		}
+       
+
 
 		/*for (int i = 0; i < student_valid.size(); i++){
 			if (students_all[student_valid[i]][0].matching_at_end < 100){
 				rectangle(image, students_all[student_valid[i]][0].body_bbox, Scalar(0, 255, 0),2);
 			}
 		}*/
-
 
 		//drawGrid(image,student_valid,students_all);
 		string output1;	

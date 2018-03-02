@@ -62,7 +62,7 @@ struct Student_Info{
 	map<int, int>match_history;
 };
 //vector<Student_Info> student_detect(Net &net1, Mat &image, int &n, PoseInfo &pose,string &output);
-std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(Net &net1, Net &net2, Net &net3, Net &net4, jfda::JfdaDetector &detector, Mat &image, int &n, PoseInfo &pose, string &output, vector<vector<Student_Info>>&students_all, vector<int>&student_valid, vector<Class_Info> &class_info_all, vector<FaceInfo>&standard_faces, int &max_student_num);
+std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(Net &net1, Net &net2, Net &net3, Net &net4, jfda::JfdaDetector &detector, Mat &image, int &n, PoseInfo &pose, string &output, vector<vector<Student_Info>>&students_all, vector<vector<Student_Info>>&ID, vector<int>&student_valid, vector<Class_Info> &class_info_all, vector<FaceInfo>&standard_faces, int &max_student_num);
 int GetStandaredFeats(Net &net1, PoseInfo &pose, Mat &frame, int &n,int &n1, float &score_all, string &output, int &max_student_num, vector<vector<Student_Info>>&students_all, vector<int>&student_valid, vector<Class_Info>&class_info_all);
 
 int GetStandaredFeats1(Net &net1, Net &net3, Net &net4, jfda::JfdaDetector &detector, vector<FaceInfo>&standard_faces, PoseInfo &pose, Mat &frame_1080, int &n, int &n2, string &output, vector<vector<Student_Info>>&students_all, vector<int>&student_valid, int &max_student_num);
